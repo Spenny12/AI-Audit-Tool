@@ -13,7 +13,7 @@ def query_llm(provider, api_key, prompt):
         
         elif provider == "Gemini":
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-3-flash-preview')
             response = model.generate_content(prompt)
             return response.text
             
