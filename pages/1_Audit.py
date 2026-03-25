@@ -1,4 +1,6 @@
 import streamlit as st
+import csv
+import io
 from utils.llm_handler import query_llm
 from utils.prompts import CATEGORIES, format_prompt
 
@@ -32,21 +34,51 @@ if st.button("Run Audit"):
     elif not selected_cats:
         st.warning("Please select at least one category.")
     else:
-        results = {}
+        results_for_csv = []
         providers = []
         if openai_key: providers.append(("OpenAI", openai_key))
         if gemini_key: providers.append(("Gemini", gemini_key))
 
         for cat in selected_cats:
             st.header(f"Results: {cat}")
-            for question_template in CATEGORIES[cat]:
-                prompt = format_prompt(question_template, client_name, competitors)
-                st.subheader(f"Q: {question_template.replace('{client}', client_name)}")
+            for q_data in CATEGORIES[cat]:
+                question_template = q_data["question"]
+                display_q = format_prompt(question_template, client_name, competitors)
+                
+                st.subheader(f"Q: {display_q}")
+                st.caption(f"**Target Audience:** {q_data['audience']} | **Stage:** {q_data['funnel']}")
+                st.info(f"*Goal: {q_data['goal']}*")
                 
                 cols = st.columns(len(providers))
                 for i, (p_name, p_key) in enumerate(providers):
                     with cols[i]:
                         with st.spinner(f"Querying {p_name}..."):
-                            answer = query_llm(p_name, p_key, prompt)
+                            answer = query_llm(p_name, p_key, display_q)
                             st.markdown(f"**{p_name} Response:**")
-                            st.info(answer)
+                            st.write(answer)
+                            
+                            # Collect for CSV
+                            results_for_csv.append({
+                                "Category": cat,
+                                "Funnel Stage": q_data["funnel"],
+                                "Audience": q_data["audience"],
+                                "Question": display_q,
+                                "Goal": q_data["goal"],
+                                "Provider": p_name,
+                                "Response": answer
+                            })
+        
+        # Download button
+        if results_for_csv:
+            st.divider()
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=["Category", "Funnel Stage", "Audience", "Question", "Goal", "Provider", "Response"])
+            writer.writeheader()
+            writer.writerows(results_for_csv)
+            
+            st.download_button(
+                label="Download Results CSV",
+                data=output.getvalue(),
+                file_name=f"audit_results_{client_name.replace(' ', '_').lower()}.csv",
+                mime="text/csv"
+            )
