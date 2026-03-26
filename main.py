@@ -28,13 +28,22 @@ def get_links(url):
 ## Sidebar - API & Global Settings
 with st.sidebar:
     st.header("Global Settings")
-    openai_key = st.text_input("OpenAI API Key", type="password")
-    gemini_key = st.text_input("Gemini API Key", type="password")
+    openai_key = st.text_input(
+        "OpenAI API Key", 
+        type="password", 
+        help="Required for OpenAI models. Your key is never stored."
+    )
+    gemini_key = st.text_input(
+        "Gemini API Key", 
+        type="password", 
+        help="Required for Google Gemini models. Your key is never stored."
+    )
     
     country = st.selectbox(
         "Target Country/Region",
         ["United Kingdom", "United States", "Canada", "Australia", "Germany", "France", "Other"],
-        index=0
+        index=0,
+        help="Sets the regional context for the LLM. Affects local regulations, competitors, and terminology."
     )
     st.session_state['target_country'] = country
 
@@ -43,8 +52,16 @@ st.title("AI Visibility & Discovery Audit Suite")
 ## Shared Inputs
 col1, col2 = st.columns([1, 1])
 with col1:
-    client_name = st.text_input("Client Name", placeholder="e.g. Acme Corp")
-    website_url = st.text_input("Website URL", placeholder="https://www.acme.com")
+    client_name = st.text_input(
+        "Client Name", 
+        placeholder="e.g. Acme Corp",
+        help="The name of the brand you are auditing. This is injected into {client} placeholders."
+    )
+    website_url = st.text_input(
+        "Website URL", 
+        placeholder="https://www.acme.com",
+        help="Used to crawl the site to automatically detect industry, services, and discovery keywords."
+    )
     
     # Automatic Industry Detection
     industry_guess = "financial services"
@@ -66,11 +83,23 @@ with col1:
                         st.session_state['last_url'] = website_url
                 except: pass
 
-    industry = st.text_input("Industry", value=st.session_state.get('industry', industry_guess))
-    core_service = st.text_input("Core Service", value=st.session_state.get('service', service_guess))
+    industry = st.text_input(
+        "Industry", 
+        value=st.session_state.get('industry', industry_guess),
+        help="The sector the client operates in. Injected into {industry} placeholders to ensure the LLM knows the market context."
+    )
+    core_service = st.text_input(
+        "Core Service", 
+        value=st.session_state.get('service', service_guess),
+        help="The primary product or service offered. Injected into {service} placeholders."
+    )
 
 with col2:
-    competitor_input = st.text_area("Competitors (1 per line, max 3)", placeholder="Competitor A\nCompetitor B")
+    competitor_input = st.text_area(
+        "Competitors (1 per line, max 3)", 
+        placeholder="Competitor A\nCompetitor B",
+        help="Specific rivals to track for 'Share of Voice' and direct comparisons."
+    )
     competitors = [c.strip() for c in competitor_input.split('\n') if c.strip()][:3]
 
 tab1, tab2 = st.tabs(["Brand Audit", "Unbranded Audit"])
@@ -102,12 +131,24 @@ with tab1:
     st.header("Brand Perception Audit")
     st.markdown("Query LLMs using questions that specifically mention your brand.")
     
-    selected_cats = [cat for cat in BRANDED_CATEGORIES.keys() if st.checkbox(cat, key=f"branded_cat_{cat}")]
+    # Help text for categories
+    cat_help = {
+        "Core Brand Signals": "Checks if the LLM knows basic facts, slogans, and regulation status of your brand.",
+        "Market Comparisons": "Directly compares your brand against the competitors listed above.",
+        "Customer Persona Highlights": "Tests how your brand is pitched to specific audiences like High-Net-Worth or Retail clients.",
+        "Reputation Under Pressure": "Forces the LLM to identify disadvantages, risks, and common complaints about your brand."
+    }
     
-    custom_questions_input = st.text_area("Add Custom Branded Questions (1 per line)", placeholder="How does {client} handle {industry} regulations?")
+    selected_cats = [cat for cat in BRANDED_CATEGORIES.keys() if st.checkbox(cat, key=f"branded_cat_{cat}", help=cat_help.get(cat, ""))]
+    
+    custom_questions_input = st.text_area(
+        "Add Custom Branded Questions (1 per line)", 
+        placeholder="How does {client} handle {industry} regulations?",
+        help="Write your own questions. Use placeholders like {client}, {industry}, and {service} for dynamic injection."
+    )
     custom_questions = [q.strip() for q in custom_questions_input.split('\n') if q.strip()]
 
-    if st.button("Run Brand Audit"):
+    if st.button("Run Brand Audit", help="Executes parallel queries to OpenAI and Gemini for all selected branded questions."):
         if not (openai_key or gemini_key):
             st.error("Please provide at least one API key.")
         elif not client_name:
@@ -161,10 +202,22 @@ with tab2:
     st.markdown(f"Analyze visibility for **{industry}** using generic questions and keyword-based discovery.")
     
     st.subheader("1. Industry-Wide Questions")
-    selected_unbranded_cats = [cat for cat in UNBRANDED_CATEGORIES.keys() if st.checkbox(f"Include {cat}", value=True, key=f"unbranded_cat_{cat}")]
+    selected_unbranded_cats = [
+        cat for cat in UNBRANDED_CATEGORIES.keys() 
+        if st.checkbox(
+            f"Include {cat}", 
+            value=True, 
+            key=f"unbranded_cat_{cat}",
+            help="Queries the LLM about the 'best' or 'most reputable' firms in your industry WITHOUT mentioning your brand. Useful to see if your brand appears naturally in top-tier lists."
+        )
+    ]
     
     st.subheader("2. Keyword Discovery")
-    manual_keywords = st.text_area("Manual Keywords (Optional, 1 per line)", placeholder="wealth management")
+    manual_keywords = st.text_area(
+        "Manual Keywords (Optional, 1 per line)", 
+        placeholder="wealth management",
+        help="If empty, keywords will be automatically generated by crawling your site. If provided, the audit will use these specific terms to generate unbranded informational questions."
+    )
 
     def extract_keywords(text, p_name, p_key, country, industry):
         prompt = f"Context: {country}. Identify 5 unbranded SEO keywords related to {industry}. Return ONLY keywords, one per line:\n\n{text[:4000]}"
@@ -176,7 +229,7 @@ with tab2:
         response = query_llm(p_name, p_key, prompt)
         return [q.strip() for q in response.split('\n') if q.strip()][:3]
 
-    if st.button("Run Unbranded Audit"):
+    if st.button("Run Unbranded Audit", help="Combines generic industry benchmarks with keyword-based discovery questions to measure 'Natural Share of Voice'."):
         if not (openai_key or gemini_key):
             st.error("Please provide at least one API key.")
         elif not client_name:
@@ -230,22 +283,23 @@ with tab2:
                 status.update(label="Complete!", state="complete")
 
             # Summary Chart
-            mentions = sum(1 for r in all_unbranded_results if r["Client Mentioned"] == "Yes")
-            st.metric("Natural Share of Voice (Unbranded)", f"{(mentions/len(all_unbranded_results))*100:.1f}%")
-            
-            sov_chart = {client_name: mentions}
-            for c in competitors:
-                sov_chart[c] = sum(1 for r in all_unbranded_results if c in r["Competitor Mentions"])
-            st.bar_chart(sov_chart)
+            if all_unbranded_results:
+                mentions = sum(1 for r in all_unbranded_results if r["Client Mentioned"] == "Yes")
+                st.metric("Natural Share of Voice (Unbranded)", f"{(mentions/len(all_unbranded_results))*100:.1f}%")
+                
+                sov_chart = {client_name: mentions}
+                for c in competitors:
+                    sov_chart[c] = sum(1 for r in all_unbranded_results if c in r["Competitor Mentions"])
+                st.bar_chart(sov_chart)
 
-            for res in all_unbranded_results:
-                with st.expander(f"Q: {res['Question']} ({res['Provider']})"):
-                    if res["Client Mentioned"] == "Yes": st.success("Client naturally mentioned!")
-                    elif res["Competitor Mentions"]: st.warning(f"Competitors mentioned: {res['Competitor Mentions']}")
-                    st.write(res["Response"])
+                for res in all_unbranded_results:
+                    with st.expander(f"Q: {res['Question']} ({res['Provider']})"):
+                        if res["Client Mentioned"] == "Yes": st.success("Client naturally mentioned!")
+                        elif res["Competitor Mentions"]: st.warning(f"Competitors mentioned: {res['Competitor Mentions']}")
+                        st.write(res["Response"])
 
-            output = io.StringIO()
-            writer = csv.DictWriter(output, fieldnames=all_unbranded_results[0].keys())
-            writer.writeheader()
-            writer.writerows(all_unbranded_results)
-            st.download_button("Download Unbranded Audit CSV", output.getvalue(), "unbranded_audit.csv", "text/csv")
+                output = io.StringIO()
+                writer = csv.DictWriter(output, fieldnames=all_unbranded_results[0].keys())
+                writer.writeheader()
+                writer.writerows(all_unbranded_results)
+                st.download_button("Download Unbranded Audit CSV", output.getvalue(), "unbranded_audit.csv", "text/csv")
