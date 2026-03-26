@@ -69,7 +69,7 @@ with col1:
     
     if website_url and (openai_key or gemini_key):
         if 'last_url' not in st.session_state or st.session_state['last_url'] != website_url:
-            with st.spinner("Analyzing website for industry context..."):
+            with st.spinner("Analysing website for industry context..."):
                 _, text = get_links(website_url)
                 p_name = "OpenAI" if openai_key else "Gemini"
                 p_key = openai_key if openai_key else gemini_key
