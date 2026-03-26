@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from concurrent.futures import ThreadPoolExecutor
 from utils.llm_handler import query_llm
-from utils.prompts import CATEGORIES, format_prompt
+from utils.prompts import BRANDED_CATEGORIES, UNBRANDED_CATEGORIES, format_prompt
 from utils.analysis import analyze_response, calculate_sov
 
 st.set_page_config(page_title="AI Visibility Audit Suite", layout="wide")
@@ -73,37 +73,39 @@ with col2:
     competitor_input = st.text_area("Competitors (1 per line, max 3)", placeholder="Competitor A\nCompetitor B")
     competitors = [c.strip() for c in competitor_input.split('\n') if c.strip()][:3]
 
-tab1, tab2 = st.tabs(["Brand Audit", "Discovery Audit"])
+tab1, tab2 = st.tabs(["Brand Audit", "Unbranded Audit"])
+
+# --- Shared Query Function ---
+def run_audit_query(p_name, p_key, prompt, q_metadata, cat, client, comps, country, is_branded=True):
+    regional_prompt = f"Context: User is in {country}. Question: {prompt}"
+    answer = query_llm(p_name, p_key, regional_prompt)
+    analysis = analyze_response(p_name, p_key, answer, client, country)
+    sov = calculate_sov(answer, client, comps)
+    
+    return {
+        "Category": cat,
+        "Funnel Stage": q_metadata.get("funnel", "N/A"),
+        "Audience": q_metadata.get("audience", "General"),
+        "Question": prompt,
+        "Goal": q_metadata.get("goal", "N/A"),
+        "Provider": p_name,
+        "Response": answer,
+        "Sentiment": analysis.get("Sentiment", "Neutral"),
+        "GEO Score": analysis.get("GEO Score", "5"),
+        "Hallucination Risk": analysis.get("Hallucination Risk", "Low"),
+        "Client Mentioned": "Yes" if sov.get(client) else "No",
+        "Competitor Mentions": ", ".join([c for c in comps if sov.get(c)])
+    }
 
 # --- Tab 1: Brand Audit ---
 with tab1:
     st.header("Brand Perception Audit")
-    st.markdown("Query LLMs using industry-contextualized questions about your brand.")
+    st.markdown("Query LLMs using questions that specifically mention your brand.")
     
-    selected_cats = [cat for cat in CATEGORIES.keys() if st.checkbox(cat, key=f"cat_{cat}")]
+    selected_cats = [cat for cat in BRANDED_CATEGORIES.keys() if st.checkbox(cat, key=f"branded_cat_{cat}")]
     
-    custom_questions_input = st.text_area("Add Custom Questions (1 per line)", placeholder="How does {client} handle {industry} regulations?")
+    custom_questions_input = st.text_area("Add Custom Branded Questions (1 per line)", placeholder="How does {client} handle {industry} regulations?")
     custom_questions = [q.strip() for q in custom_questions_input.split('\n') if q.strip()]
-
-    def run_brand_query(p_name, p_key, prompt, q_metadata, cat, client, comps, country):
-        regional_prompt = f"Context: User is in {country}. Question: {prompt}"
-        answer = query_llm(p_name, p_key, regional_prompt)
-        analysis = analyze_response(p_name, p_key, answer, client, country)
-        sov = calculate_sov(answer, client, comps)
-        return {
-            "Category": cat,
-            "Funnel Stage": q_metadata.get("funnel", "Custom"),
-            "Audience": q_metadata.get("audience", "General"),
-            "Question": prompt,
-            "Goal": q_metadata.get("goal", "Custom Analysis"),
-            "Provider": p_name,
-            "Response": answer,
-            "Sentiment": analysis.get("Sentiment", "Neutral"),
-            "GEO Score": analysis.get("GEO Score", "5"),
-            "Hallucination Risk": analysis.get("Hallucination Risk", "Low"),
-            "Client Mentioned": "Yes" if sov.get(client) else "No",
-            "Competitor Mentions": ", ".join([c for c in comps if sov.get(c)])
-        }
 
     if st.button("Run Brand Audit"):
         if not (openai_key or gemini_key):
@@ -116,14 +118,12 @@ with tab1:
             if gemini_key: providers.append(("Gemini", gemini_key))
 
             all_tasks = []
-            # Default questions
             for cat in selected_cats:
-                for q_data in CATEGORIES[cat]:
+                for q_data in BRANDED_CATEGORIES[cat]:
                     display_q = format_prompt(q_data["question"], client_name, competitors, country, industry, core_service)
                     for p_name, p_key in providers:
                         all_tasks.append((p_name, p_key, display_q, q_data, cat, client_name, competitors, country))
             
-            # Custom questions
             for cq in custom_questions:
                 display_q = cq.replace("{client}", client_name).replace("{competitors}", ", ".join(competitors)).replace("{industry}", industry).replace("{service}", core_service)
                 for p_name, p_key in providers:
@@ -133,15 +133,14 @@ with tab1:
                 st.warning("Please select a category or add custom questions.")
             else:
                 results = []
-                st.info(f"Running {len(all_tasks)} parallel queries...")
+                st.info(f"Running {len(all_tasks)} branded queries...")
                 progress = st.progress(0)
                 with ThreadPoolExecutor(max_workers=10) as executor:
-                    futures = [executor.submit(run_brand_query, *t) for t in all_tasks]
+                    futures = [executor.submit(run_audit_query, *t) for t in all_tasks]
                     for i, f in enumerate(futures):
                         results.append(f.result())
                         progress.progress((i+1)/len(all_tasks))
                 
-                # Display
                 for res in results:
                     with st.expander(f"Q: {res['Question']} ({res['Provider']})"):
                         c1, c2, c3 = st.columns(3)
@@ -150,40 +149,58 @@ with tab1:
                         c3.metric("Hallucination", res["Hallucination Risk"])
                         st.write(res["Response"])
                 
-                # Download
                 output = io.StringIO()
                 writer = csv.DictWriter(output, fieldnames=results[0].keys())
                 writer.writeheader()
                 writer.writerows(results)
                 st.download_button("Download Brand Audit CSV", output.getvalue(), "brand_audit.csv", "text/csv")
 
-# --- Tab 2: Discovery Audit ---
+# --- Tab 2: Unbranded Audit ---
 with tab2:
-    st.header("Unbranded Discovery Audit")
-    st.markdown(f"Analyze unbranded search visibility for **{industry}**.")
+    st.header("Unbranded Visibility Audit")
+    st.markdown(f"Analyze visibility for **{industry}** using generic questions and keyword-based discovery.")
     
+    st.subheader("1. Industry-Wide Questions")
+    selected_unbranded_cats = [cat for cat in UNBRANDED_CATEGORIES.keys() if st.checkbox(f"Include {cat}", value=True, key=f"unbranded_cat_{cat}")]
+    
+    st.subheader("2. Keyword Discovery")
     manual_keywords = st.text_area("Manual Keywords (Optional, 1 per line)", placeholder="wealth management")
 
     def extract_keywords(text, p_name, p_key, country, industry):
-        prompt = f"Context: {country}. Identify 5 unbranded SEO keywords related to {industry} for these services. Return ONLY keywords, one per line:\n\n{text[:4000]}"
+        prompt = f"Context: {country}. Identify 5 unbranded SEO keywords related to {industry}. Return ONLY keywords, one per line:\n\n{text[:4000]}"
         response = query_llm(p_name, p_key, prompt)
         return [k.strip() for k in response.split('\n') if k.strip()][:5]
 
     def generate_discovery_questions(keyword, p_name, p_key, country, industry):
-        prompt = f"Context: {country}, Industry: {industry}. Generate 5 unbranded questions about '{keyword}'. Return ONLY questions, one per line."
+        prompt = f"Context: {country}, Industry: {industry}. Generate 3 unbranded questions about '{keyword}'. Return ONLY questions, one per line."
         response = query_llm(p_name, p_key, prompt)
-        return [q.strip() for q in response.split('\n') if q.strip()][:5]
+        return [q.strip() for q in response.split('\n') if q.strip()][:3]
 
-    if st.button("Run Discovery Audit"):
+    if st.button("Run Unbranded Audit"):
         if not (openai_key or gemini_key):
             st.error("Please provide at least one API key.")
-        elif not client_name or not website_url:
-            st.error("Please provide client name and URL.")
+        elif not client_name:
+            st.error("Please provide a client name.")
         else:
             p_name = "OpenAI" if openai_key else "Gemini"
             p_key = openai_key if openai_key else gemini_key
+            providers = []
+            if openai_key: providers.append(("OpenAI", openai_key))
+            if gemini_key: providers.append(("Gemini", gemini_key))
+
+            all_unbranded_results = []
             
-            with st.status("Discovery in progress...") as status:
+            with st.status("Running Unbranded Audit...") as status:
+                # Part A: Category Questions
+                cat_tasks = []
+                for cat in selected_unbranded_cats:
+                    for q_data in UNBRANDED_CATEGORIES[cat]:
+                        display_q = format_prompt(q_data["question"], client_name, competitors, country, industry, core_service)
+                        for pn, pk in providers:
+                            cat_tasks.append((pn, pk, display_q, q_data, cat, client_name, competitors, country))
+                
+                # Part B: Keyword Discovery
+                status.update(label="Crawling and generating keywords...", state="running")
                 links, home_text = get_links(website_url)
                 combined_text = home_text
                 for link in links[:3]:
@@ -195,44 +212,40 @@ with tab2:
                 else:
                     keywords = extract_keywords(combined_text, p_name, p_key, country, industry)
                 
-                st.write(f"Keywords: {', '.join(keywords)}")
+                st.write(f"Discovery Keywords: {', '.join(keywords)}")
                 
-                disc_results = []
-                providers = []
-                if openai_key: providers.append(("OpenAI", openai_key))
-                if gemini_key: providers.append(("Gemini", gemini_key))
-
                 for kw in keywords:
                     qs = generate_discovery_questions(kw, p_name, p_key, country, industry)
                     for q in qs:
                         for pn, pk in providers:
-                            regional_prompt = f"Context: {country}. Question: {q}"
-                            answer = query_llm(pn, pk, regional_prompt)
-                            analysis = analyze_response(pn, pk, answer, client_name, country)
-                            sov = calculate_sov(answer, client_name, competitors)
-                            disc_results.append({
-                                "Keyword": kw, "Question": q, "Provider": pn,
-                                "Mentioned": "Yes" if sov.get(client_name) else "No",
-                                "Competitor Mentions": ", ".join([c for c in competitors if sov.get(c)]),
-                                "Sentiment": analysis.get("Sentiment"),
-                                "GEO Score": analysis.get("GEO Score"),
-                                "Response": answer
-                            })
-                status.update(label="Complete!", state="complete")
-            
-            # Summary Chart
-            if disc_results:
-                mentions = sum(1 for r in disc_results if r["Mentioned"] == "Yes")
-                st.metric("Total Visibility", f"{(mentions/len(disc_results))*100:.1f}%")
+                            cat_tasks.append((pn, pk, q, {"goal": f"Discovery for {kw}"}, "Keyword Discovery", client_name, competitors, country))
                 
-                sov_chart = {client_name: mentions}
-                for c in competitors:
-                    sov_chart[c] = sum(1 for r in disc_results if c in r["Competitor Mentions"])
-                st.bar_chart(sov_chart)
+                # Execute all unbranded tasks
+                status.update(label=f"Querying LLMs for {len(cat_tasks)} unbranded questions...", state="running")
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    futures = [executor.submit(run_audit_query, *t) for t in cat_tasks]
+                    for f in futures:
+                        all_unbranded_results.append(f.result())
+                
+                status.update(label="Complete!", state="complete")
 
-                # Download
-                output = io.StringIO()
-                writer = csv.DictWriter(output, fieldnames=disc_results[0].keys())
-                writer.writeheader()
-                writer.writerows(disc_results)
-                st.download_button("Download Discovery CSV", output.getvalue(), "discovery_audit.csv", "text/csv")
+            # Summary Chart
+            mentions = sum(1 for r in all_unbranded_results if r["Client Mentioned"] == "Yes")
+            st.metric("Natural Share of Voice (Unbranded)", f"{(mentions/len(all_unbranded_results))*100:.1f}%")
+            
+            sov_chart = {client_name: mentions}
+            for c in competitors:
+                sov_chart[c] = sum(1 for r in all_unbranded_results if c in r["Competitor Mentions"])
+            st.bar_chart(sov_chart)
+
+            for res in all_unbranded_results:
+                with st.expander(f"Q: {res['Question']} ({res['Provider']})"):
+                    if res["Client Mentioned"] == "Yes": st.success("Client naturally mentioned!")
+                    elif res["Competitor Mentions"]: st.warning(f"Competitors mentioned: {res['Competitor Mentions']}")
+                    st.write(res["Response"])
+
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=all_unbranded_results[0].keys())
+            writer.writeheader()
+            writer.writerows(all_unbranded_results)
+            st.download_button("Download Unbranded Audit CSV", output.getvalue(), "unbranded_audit.csv", "text/csv")
