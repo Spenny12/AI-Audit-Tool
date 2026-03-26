@@ -11,6 +11,20 @@ from utils.analysis import analyze_response, calculate_sov
 
 st.set_page_config(page_title="AI Visibility Audit Suite", layout="wide")
 
+# Helper for crawling
+def get_links(url):
+    try:
+        response = requests.get(url, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        links = set()
+        domain = urlparse(url).netloc
+        for a in soup.find_all('a', href=True):
+            link = urljoin(url, a['href'])
+            if urlparse(link).netloc == domain:
+                links.add(link)
+        return list(links), soup.get_text()
+    except: return [], ""
+
 ## Sidebar - API & Global Settings
 with st.sidebar:
     st.header("Global Settings")
@@ -31,6 +45,30 @@ col1, col2 = st.columns([1, 1])
 with col1:
     client_name = st.text_input("Client Name", placeholder="e.g. Acme Corp")
     website_url = st.text_input("Website URL", placeholder="https://www.acme.com")
+    
+    # Automatic Industry Detection
+    industry_guess = "financial services"
+    service_guess = "wealth management"
+    
+    if website_url and (openai_key or gemini_key):
+        if 'last_url' not in st.session_state or st.session_state['last_url'] != website_url:
+            with st.spinner("Analyzing website for industry context..."):
+                _, text = get_links(website_url)
+                p_name = "OpenAI" if openai_key else "Gemini"
+                p_key = openai_key if openai_key else gemini_key
+                prompt = f"Based on this text, what is the specific industry and the primary core service? Return as 'Industry | Service':\n\n{text[:2000]}"
+                try:
+                    res = query_llm(p_name, p_key, prompt)
+                    if "|" in res:
+                        industry_guess, service_guess = [x.strip() for x in res.split("|", 1)]
+                        st.session_state['industry'] = industry_guess
+                        st.session_state['service'] = service_guess
+                        st.session_state['last_url'] = website_url
+                except: pass
+
+    industry = st.text_input("Industry", value=st.session_state.get('industry', industry_guess))
+    core_service = st.text_input("Core Service", value=st.session_state.get('service', service_guess))
+
 with col2:
     competitor_input = st.text_area("Competitors (1 per line, max 3)", placeholder="Competitor A\nCompetitor B")
     competitors = [c.strip() for c in competitor_input.split('\n') if c.strip()][:3]
@@ -40,11 +78,11 @@ tab1, tab2 = st.tabs(["Brand Audit", "Discovery Audit"])
 # --- Tab 1: Brand Audit ---
 with tab1:
     st.header("Brand Perception Audit")
-    st.markdown("Query LLMs using pre-defined (or custom) questions about your brand.")
+    st.markdown("Query LLMs using industry-contextualized questions about your brand.")
     
     selected_cats = [cat for cat in CATEGORIES.keys() if st.checkbox(cat, key=f"cat_{cat}")]
     
-    custom_questions_input = st.text_area("Add Custom Questions (1 per line)", placeholder="How does {client} handle data privacy?")
+    custom_questions_input = st.text_area("Add Custom Questions (1 per line)", placeholder="How does {client} handle {industry} regulations?")
     custom_questions = [q.strip() for q in custom_questions_input.split('\n') if q.strip()]
 
     def run_brand_query(p_name, p_key, prompt, q_metadata, cat, client, comps, country):
@@ -81,13 +119,13 @@ with tab1:
             # Default questions
             for cat in selected_cats:
                 for q_data in CATEGORIES[cat]:
-                    display_q = format_prompt(q_data["question"], client_name, competitors, country)
+                    display_q = format_prompt(q_data["question"], client_name, competitors, country, industry, core_service)
                     for p_name, p_key in providers:
                         all_tasks.append((p_name, p_key, display_q, q_data, cat, client_name, competitors, country))
             
             # Custom questions
             for cq in custom_questions:
-                display_q = cq.replace("{client}", client_name).replace("{competitors}", ", ".join(competitors))
+                display_q = cq.replace("{client}", client_name).replace("{competitors}", ", ".join(competitors)).replace("{industry}", industry).replace("{service}", core_service)
                 for p_name, p_key in providers:
                     all_tasks.append((p_name, p_key, display_q, {}, "Custom", client_name, competitors, country))
 
@@ -95,7 +133,7 @@ with tab1:
                 st.warning("Please select a category or add custom questions.")
             else:
                 results = []
-                st.info(f"Running {len(all_tasks)} queries...")
+                st.info(f"Running {len(all_tasks)} parallel queries...")
                 progress = st.progress(0)
                 with ThreadPoolExecutor(max_workers=10) as executor:
                     futures = [executor.submit(run_brand_query, *t) for t in all_tasks]
@@ -122,30 +160,17 @@ with tab1:
 # --- Tab 2: Discovery Audit ---
 with tab2:
     st.header("Unbranded Discovery Audit")
-    st.markdown("Analyze unbranded search visibility by crawling your site and generating keywords.")
+    st.markdown(f"Analyze unbranded search visibility for **{industry}**.")
     
     manual_keywords = st.text_area("Manual Keywords (Optional, 1 per line)", placeholder="wealth management")
 
-    def get_links(url):
-        try:
-            response = requests.get(url, timeout=10)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            links = set()
-            domain = urlparse(url).netloc
-            for a in soup.find_all('a', href=True):
-                link = urljoin(url, a['href'])
-                if urlparse(link).netloc == domain:
-                    links.add(link)
-            return list(links), soup.get_text()
-        except: return [], ""
-
-    def extract_keywords(text, p_name, p_key, country):
-        prompt = f"Context: {country}. Identify 5 unbranded SEO keywords for these services. Return ONLY keywords, one per line:\n\n{text[:4000]}"
+    def extract_keywords(text, p_name, p_key, country, industry):
+        prompt = f"Context: {country}. Identify 5 unbranded SEO keywords related to {industry} for these services. Return ONLY keywords, one per line:\n\n{text[:4000]}"
         response = query_llm(p_name, p_key, prompt)
         return [k.strip() for k in response.split('\n') if k.strip()][:5]
 
-    def generate_discovery_questions(keyword, p_name, p_key, country):
-        prompt = f"Context: {country}. Generate 5 unbranded questions about '{keyword}'. Return ONLY questions, one per line."
+    def generate_discovery_questions(keyword, p_name, p_key, country, industry):
+        prompt = f"Context: {country}, Industry: {industry}. Generate 5 unbranded questions about '{keyword}'. Return ONLY questions, one per line."
         response = query_llm(p_name, p_key, prompt)
         return [q.strip() for q in response.split('\n') if q.strip()][:5]
 
@@ -161,14 +186,14 @@ with tab2:
             with st.status("Discovery in progress...") as status:
                 links, home_text = get_links(website_url)
                 combined_text = home_text
-                for link in links[:3]: # Limit crawl
+                for link in links[:3]:
                     _, sub_text = get_links(link)
                     combined_text += "\n" + sub_text
                 
                 if manual_keywords:
                     keywords = [k.strip() for k in manual_keywords.split('\n') if k.strip()]
                 else:
-                    keywords = extract_keywords(combined_text, p_name, p_key, country)
+                    keywords = extract_keywords(combined_text, p_name, p_key, country, industry)
                 
                 st.write(f"Keywords: {', '.join(keywords)}")
                 
@@ -178,7 +203,7 @@ with tab2:
                 if gemini_key: providers.append(("Gemini", gemini_key))
 
                 for kw in keywords:
-                    qs = generate_discovery_questions(kw, p_name, p_key, country)
+                    qs = generate_discovery_questions(kw, p_name, p_key, country, industry)
                     for q in qs:
                         for pn, pk in providers:
                             regional_prompt = f"Context: {country}. Question: {q}"
@@ -196,17 +221,18 @@ with tab2:
                 status.update(label="Complete!", state="complete")
             
             # Summary Chart
-            mentions = sum(1 for r in disc_results if r["Mentioned"] == "Yes")
-            st.metric("Total Visibility", f"{(mentions/len(disc_results))*100:.1f}%")
-            
-            sov_chart = {client_name: mentions}
-            for c in competitors:
-                sov_chart[c] = sum(1 for r in disc_results if c in r["Competitor Mentions"])
-            st.bar_chart(sov_chart)
+            if disc_results:
+                mentions = sum(1 for r in disc_results if r["Mentioned"] == "Yes")
+                st.metric("Total Visibility", f"{(mentions/len(disc_results))*100:.1f}%")
+                
+                sov_chart = {client_name: mentions}
+                for c in competitors:
+                    sov_chart[c] = sum(1 for r in disc_results if c in r["Competitor Mentions"])
+                st.bar_chart(sov_chart)
 
-            # Download
-            output = io.StringIO()
-            writer = csv.DictWriter(output, fieldnames=disc_results[0].keys())
-            writer.writeheader()
-            writer.writerows(disc_results)
-            st.download_button("Download Discovery CSV", output.getvalue(), "discovery_audit.csv", "text/csv")
+                # Download
+                output = io.StringIO()
+                writer = csv.DictWriter(output, fieldnames=disc_results[0].keys())
+                writer.writeheader()
+                writer.writerows(disc_results)
+                st.download_button("Download Discovery CSV", output.getvalue(), "discovery_audit.csv", "text/csv")
