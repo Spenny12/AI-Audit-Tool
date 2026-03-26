@@ -23,8 +23,3 @@ Select a tool from the sidebar to begin.
 - **Discovery Tool**: Crawl your site, generate unbranded keywords, and measure Share of Voice.
 """)
 
-st.subheader("New Features Active:")
-st.success("✅ **Competitor Share of Voice**: Track how often rivals appear.")
-st.success("✅ **Sentiment Analysis**: Automated polarity detection (Positive/Neutral/Negative).")
-st.success("✅ **GEO Scoring**: Generative Engine Optimisation score (1-10).")
-st.success("✅ **Hallucination Monitoring**: Identification of factual inconsistencies.")
