@@ -1,25 +1,212 @@
 import streamlit as st
+import csv
+import io
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin, urlparse
+from concurrent.futures import ThreadPoolExecutor
+from utils.llm_handler import query_llm
+from utils.prompts import CATEGORIES, format_prompt
+from utils.analysis import analyze_response, calculate_sov
 
-st.set_page_config(page_title="Visibility Audit Suite", layout="wide")
+st.set_page_config(page_title="AI Visibility Audit Suite", layout="wide")
 
-st.title("AI Visibility Audit Suite")
-
-# Global Settings in Sidebar
+## Sidebar - API & Global Settings
 with st.sidebar:
     st.header("Global Settings")
+    openai_key = st.text_input("OpenAI API Key", type="password")
+    gemini_key = st.text_input("Gemini API Key", type="password")
+    
     country = st.selectbox(
         "Target Country/Region",
         ["United Kingdom", "United States", "Canada", "Australia", "Germany", "France", "Other"],
         index=0
     )
     st.session_state['target_country'] = country
-    st.info(f"Audit context set to: {country}")
 
-st.markdown(f"""
-Welcome to the Audit Suite. Your current target region is **{country}**.
-Select a tool from the sidebar to begin.
+st.title("AI Visibility & Discovery Audit Suite")
 
-- **Audit Tool**: Deep dive into brand perception, sentiment, and GEO scoring.
-- **Discovery Tool**: Crawl your site, generate unbranded keywords, and measure Share of Voice.
-""")
+## Shared Inputs
+col1, col2 = st.columns([1, 1])
+with col1:
+    client_name = st.text_input("Client Name", placeholder="e.g. Acme Corp")
+    website_url = st.text_input("Website URL", placeholder="https://www.acme.com")
+with col2:
+    competitor_input = st.text_area("Competitors (1 per line, max 3)", placeholder="Competitor A\nCompetitor B")
+    competitors = [c.strip() for c in competitor_input.split('\n') if c.strip()][:3]
 
+tab1, tab2 = st.tabs(["Brand Audit", "Discovery Audit"])
+
+# --- Tab 1: Brand Audit ---
+with tab1:
+    st.header("Brand Perception Audit")
+    st.markdown("Query LLMs using pre-defined (or custom) questions about your brand.")
+    
+    selected_cats = [cat for cat in CATEGORIES.keys() if st.checkbox(cat, key=f"cat_{cat}")]
+    
+    custom_questions_input = st.text_area("Add Custom Questions (1 per line)", placeholder="How does {client} handle data privacy?")
+    custom_questions = [q.strip() for q in custom_questions_input.split('\n') if q.strip()]
+
+    def run_brand_query(p_name, p_key, prompt, q_metadata, cat, client, comps, country):
+        regional_prompt = f"Context: User is in {country}. Question: {prompt}"
+        answer = query_llm(p_name, p_key, regional_prompt)
+        analysis = analyze_response(p_name, p_key, answer, client, country)
+        sov = calculate_sov(answer, client, comps)
+        return {
+            "Category": cat,
+            "Funnel Stage": q_metadata.get("funnel", "Custom"),
+            "Audience": q_metadata.get("audience", "General"),
+            "Question": prompt,
+            "Goal": q_metadata.get("goal", "Custom Analysis"),
+            "Provider": p_name,
+            "Response": answer,
+            "Sentiment": analysis.get("Sentiment", "Neutral"),
+            "GEO Score": analysis.get("GEO Score", "5"),
+            "Hallucination Risk": analysis.get("Hallucination Risk", "Low"),
+            "Client Mentioned": "Yes" if sov.get(client) else "No",
+            "Competitor Mentions": ", ".join([c for c in comps if sov.get(c)])
+        }
+
+    if st.button("Run Brand Audit"):
+        if not (openai_key or gemini_key):
+            st.error("Please provide at least one API key.")
+        elif not client_name:
+            st.error("Please provide a client name.")
+        else:
+            providers = []
+            if openai_key: providers.append(("OpenAI", openai_key))
+            if gemini_key: providers.append(("Gemini", gemini_key))
+
+            all_tasks = []
+            # Default questions
+            for cat in selected_cats:
+                for q_data in CATEGORIES[cat]:
+                    display_q = format_prompt(q_data["question"], client_name, competitors, country)
+                    for p_name, p_key in providers:
+                        all_tasks.append((p_name, p_key, display_q, q_data, cat, client_name, competitors, country))
+            
+            # Custom questions
+            for cq in custom_questions:
+                display_q = cq.replace("{client}", client_name).replace("{competitors}", ", ".join(competitors))
+                for p_name, p_key in providers:
+                    all_tasks.append((p_name, p_key, display_q, {}, "Custom", client_name, competitors, country))
+
+            if not all_tasks:
+                st.warning("Please select a category or add custom questions.")
+            else:
+                results = []
+                st.info(f"Running {len(all_tasks)} queries...")
+                progress = st.progress(0)
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    futures = [executor.submit(run_brand_query, *t) for t in all_tasks]
+                    for i, f in enumerate(futures):
+                        results.append(f.result())
+                        progress.progress((i+1)/len(all_tasks))
+                
+                # Display
+                for res in results:
+                    with st.expander(f"Q: {res['Question']} ({res['Provider']})"):
+                        c1, c2, c3 = st.columns(3)
+                        c1.metric("Sentiment", res["Sentiment"])
+                        c2.metric("GEO Score", res["GEO Score"])
+                        c3.metric("Hallucination", res["Hallucination Risk"])
+                        st.write(res["Response"])
+                
+                # Download
+                output = io.StringIO()
+                writer = csv.DictWriter(output, fieldnames=results[0].keys())
+                writer.writeheader()
+                writer.writerows(results)
+                st.download_button("Download Brand Audit CSV", output.getvalue(), "brand_audit.csv", "text/csv")
+
+# --- Tab 2: Discovery Audit ---
+with tab2:
+    st.header("Unbranded Discovery Audit")
+    st.markdown("Analyze unbranded search visibility by crawling your site and generating keywords.")
+    
+    manual_keywords = st.text_area("Manual Keywords (Optional, 1 per line)", placeholder="wealth management")
+
+    def get_links(url):
+        try:
+            response = requests.get(url, timeout=10)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            links = set()
+            domain = urlparse(url).netloc
+            for a in soup.find_all('a', href=True):
+                link = urljoin(url, a['href'])
+                if urlparse(link).netloc == domain:
+                    links.add(link)
+            return list(links), soup.get_text()
+        except: return [], ""
+
+    def extract_keywords(text, p_name, p_key, country):
+        prompt = f"Context: {country}. Identify 5 unbranded SEO keywords for these services. Return ONLY keywords, one per line:\n\n{text[:4000]}"
+        response = query_llm(p_name, p_key, prompt)
+        return [k.strip() for k in response.split('\n') if k.strip()][:5]
+
+    def generate_discovery_questions(keyword, p_name, p_key, country):
+        prompt = f"Context: {country}. Generate 5 unbranded questions about '{keyword}'. Return ONLY questions, one per line."
+        response = query_llm(p_name, p_key, prompt)
+        return [q.strip() for q in response.split('\n') if q.strip()][:5]
+
+    if st.button("Run Discovery Audit"):
+        if not (openai_key or gemini_key):
+            st.error("Please provide at least one API key.")
+        elif not client_name or not website_url:
+            st.error("Please provide client name and URL.")
+        else:
+            p_name = "OpenAI" if openai_key else "Gemini"
+            p_key = openai_key if openai_key else gemini_key
+            
+            with st.status("Discovery in progress...") as status:
+                links, home_text = get_links(website_url)
+                combined_text = home_text
+                for link in links[:3]: # Limit crawl
+                    _, sub_text = get_links(link)
+                    combined_text += "\n" + sub_text
+                
+                if manual_keywords:
+                    keywords = [k.strip() for k in manual_keywords.split('\n') if k.strip()]
+                else:
+                    keywords = extract_keywords(combined_text, p_name, p_key, country)
+                
+                st.write(f"Keywords: {', '.join(keywords)}")
+                
+                disc_results = []
+                providers = []
+                if openai_key: providers.append(("OpenAI", openai_key))
+                if gemini_key: providers.append(("Gemini", gemini_key))
+
+                for kw in keywords:
+                    qs = generate_discovery_questions(kw, p_name, p_key, country)
+                    for q in qs:
+                        for pn, pk in providers:
+                            regional_prompt = f"Context: {country}. Question: {q}"
+                            answer = query_llm(pn, pk, regional_prompt)
+                            analysis = analyze_response(pn, pk, answer, client_name, country)
+                            sov = calculate_sov(answer, client_name, competitors)
+                            disc_results.append({
+                                "Keyword": kw, "Question": q, "Provider": pn,
+                                "Mentioned": "Yes" if sov.get(client_name) else "No",
+                                "Competitor Mentions": ", ".join([c for c in competitors if sov.get(c)]),
+                                "Sentiment": analysis.get("Sentiment"),
+                                "GEO Score": analysis.get("GEO Score"),
+                                "Response": answer
+                            })
+                status.update(label="Complete!", state="complete")
+            
+            # Summary Chart
+            mentions = sum(1 for r in disc_results if r["Mentioned"] == "Yes")
+            st.metric("Total Visibility", f"{(mentions/len(disc_results))*100:.1f}%")
+            
+            sov_chart = {client_name: mentions}
+            for c in competitors:
+                sov_chart[c] = sum(1 for r in disc_results if c in r["Competitor Mentions"])
+            st.bar_chart(sov_chart)
+
+            # Download
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=disc_results[0].keys())
+            writer.writeheader()
+            writer.writerows(disc_results)
+            st.download_button("Download Discovery CSV", output.getvalue(), "discovery_audit.csv", "text/csv")
