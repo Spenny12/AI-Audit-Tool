@@ -199,7 +199,7 @@ with tab1:
 # --- Tab 2: Unbranded Audit ---
 with tab2:
     st.header("Unbranded Visibility Audit")
-    st.markdown(f"Analyze visibility for **{industry}** using generic questions and keyword-based discovery.")
+    st.markdown(f"Analyse visibility for **{industry}** using generic questions and keyword-based discovery.")
     
     st.subheader("1. Industry-Wide Questions")
     selected_unbranded_cats = [
