@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from utils.llm_handler import query_llm, OPENAI_MODELS, GEMINI_MODELS, PERPLEXITY_MODELS
 from utils.prompts import BRANDED_CATEGORIES, UNBRANDED_CATEGORIES, format_prompt
-from utils.analysis import analyze_response, calculate_sov
+from utils.analysis import analyze_response, calculate_sov, calculate_geo_score
 from utils.profiles import (
     list_profiles, save_profile, load_profile, delete_profile, profile_to_dict,
 )
@@ -400,11 +400,16 @@ def run_audit_query(p_name, p_key, prompt, q_metadata, cat, client, comps, count
     citations = result.get("citations", [])  # Feature 12
 
     if error:
-        analysis = {"Sentiment": "Neutral", "GEO Score": "5", "Hallucination Risk": "Low", "Entities": ""}
+        analysis = {"Sentiment": "Neutral", "Hallucination Risk": "Low", "Entities": ""}
+        sov = {client: 0}
+        for c in comps: sov[c] = 0
     else:
         analysis = analyze_response(p_name, p_key, answer, client, country, model=model)
+        sov = calculate_sov(answer, client, comps)
 
-    sov = calculate_sov(answer, client, comps)
+    # Deterministic GEO Score calculation
+    geo_score = calculate_geo_score(answer, client, analysis.get("Sentiment", "Neutral"), sov)
+
     client_mentions = sov.get(client, 0)
     comp_mentions = {c: sov.get(c, 0) for c in comps}
 
@@ -419,7 +424,7 @@ def run_audit_query(p_name, p_key, prompt, q_metadata, cat, client, comps, count
         "Response": answer if answer else f"[Error: {error}]",
         "Error": error or "",
         "Sentiment": analysis.get("Sentiment", "Neutral"),
-        "GEO Score": analysis.get("GEO Score", "5"),
+        "GEO Score": geo_score,
         "Hallucination Risk": analysis.get("Hallucination Risk", "Low"),
         "Key Entities": analysis.get("Entities", ""),
         "Client Mentioned": "Yes" if client_mentions > 0 else "No",
