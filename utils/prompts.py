@@ -121,12 +121,9 @@ UNBRANDED_CATEGORIES = {
     # ── 1. Strategic Brand Attributes ────────────────────────────────────────
     "Strategic Brand Attributes": [
         {"funnel": "Upper Funnel", "audience": "General", "question": "What are considered the most reputable and stable firms in the {industry} industry in {country}?", "goal": "Safety vertical — does brand appear in top-tier lists?"},
-        {"funnel": "Upper Funnel", "audience": "General", "question": "Which {industry} firms are known for conservative management and strong performance during downturns?", "goal": "Risk & performance vertical."},
-        {"funnel": "Upper Funnel", "audience": "General", "question": "What are the best {country} {industry} firms for long-term planning?", "goal": "Life stage vertical."},
         {"funnel": "Upper Funnel", "audience": "General", "question": "What are the best {industry} providers for high-value individuals in {country}?", "goal": "High-value vertical."},
         {"funnel": "Upper Funnel", "audience": "General", "question": "Which {industry} firms are known for specialist expertise in ethical or ESG-focused areas?", "goal": "Specialist vertical."},
         {"funnel": "Upper Funnel", "audience": "General", "question": "Which {industry} firms are best for creating a joint plan for partners or families?", "goal": "Joint-needs vertical."},
-        {"funnel": "Upper Funnel", "audience": "General", "question": "Which {industry} managers are considered specialists in structuring for regular, efficient outcomes?", "goal": "Outcome vertical."},
         {"funnel": "Upper Funnel", "audience": "General", "question": "Which {industry} firms in {country} have the best long-term track record for client outcomes in {service}?", "goal": "Track record and longevity vertical."},
         {"funnel": "Upper Funnel", "audience": "General", "question": "What {industry} firms are seen as innovators or disruptors in how they deliver {service}?", "goal": "Innovation and disruption vertical."},
     ],
@@ -137,7 +134,6 @@ UNBRANDED_CATEGORIES = {
         {"funnel": "Mid-Funnel", "audience": "General", "question": "What questions should I ask before choosing a {industry} firm?", "goal": "Consideration stage visibility."},
         {"funnel": "Mid-Funnel", "audience": "General", "question": "What are the top {service} trends in {country} right now?", "goal": "Thought leadership visibility."},
         {"funnel": "Lower Funnel", "audience": "General", "question": "Who are the top 5 {service} providers in {country} by reputation?", "goal": "Direct SOV test without brand prompting."},
-        {"funnel": "Lower Funnel", "audience": "General", "question": "What should I look for in a {service} contract before signing?", "goal": "Buying-stage guidance — does brand appear in expert advice?"},
         {"funnel": "Lower Funnel", "audience": "General", "question": "How do I compare {industry} firms when making a final decision?", "goal": "Decision-stage framework — brand presence in evaluation prompts."},
         {"funnel": "Upper Funnel", "audience": "General", "question": "Where can I find independent reviews or ratings of {industry} firms in {country}?", "goal": "Review and comparison platform visibility."},
         {"funnel": "Mid-Funnel", "audience": "General", "question": "What red flags should I watch out for when selecting a {service} provider in {industry}?", "goal": "Trust and risk awareness — does brand appear in 'safe' context?"},
