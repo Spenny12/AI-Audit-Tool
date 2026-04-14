@@ -1,65 +1,70 @@
+import re
 from utils.llm_handler import query_llm
 
-def analyze_response(p_name, p_key, response_text, client_name, country):
-    """
-    Performs multi-dimensional analysis on an LLM response.
-    """
-    prompt = f"""
-    Analyze the following LLM response about '{client_name}' in the context of the {country} market.
-    
-    Response Text: "{response_text}"
-    
-    Provide the following in a structured format (JSON-like, but just the values):
-    1. Sentiment: [Positive, Neutral, Negative]
-    2. GEO Score: [1-10] (How well-optimised and authoritative the brand appears)
-    3. Hallucination Risk: [Low, Medium, High] (Does it state facts that seem unverified or overly generic?)
-    4. Primary Entities: [List 2-3 key topics or brands mentioned]
 
-    Return your answer in exactly this format:
-    Sentiment: <value>
-    GEO Score: <value>
-    Hallucination Risk: <value>
-    Entities: <value>
+def analyze_response(p_name: str, p_key: str, response_text: str, client_name: str, country: str, model: str = None) -> dict:
     """
-    
-    analysis = query_llm(p_name, p_key, prompt)
-    
-    # Simple parsing logic
-    results = {
+    Analyses an LLM response for sentiment, GEO score, and hallucination risk.
+    Uses a structured prompt to minimise extra LLM calls cost.
+    """
+    prompt = f"""Analyze this LLM response about '{client_name}' in the {country} market.
+
+Response: "{response_text[:1500]}"
+
+Return ONLY in this exact format (no extra text):
+Sentiment: <Positive|Neutral|Negative>
+GEO Score: <1-10>
+Hallucination Risk: <Low|Medium|High>
+Entities: <comma-separated list of 2-3 key brands or topics mentioned>"""
+
+    result = query_llm(p_name, p_key, prompt, model=model)
+    raw = result.get("text", "")
+
+    defaults = {
         "Sentiment": "Neutral",
         "GEO Score": "5",
         "Hallucination Risk": "Low",
-        "Entities": ""
+        "Entities": "",
     }
-    
+
+    if result.get("error"):
+        return defaults
+
     try:
-        lines = analysis.strip().split('\n')
-        for line in lines:
+        for line in raw.strip().splitlines():
             if ":" in line:
                 key, val = line.split(":", 1)
                 key = key.strip()
-                if key in results:
-                    results[key] = val.strip()
-    except:
+                if key in defaults:
+                    defaults[key] = val.strip()
+    except Exception:
         pass
-        
-    return results
 
-def calculate_sov(response_text, client_name, competitors):
+    # Normalise GEO score to integer string
+    try:
+        score = int(re.search(r"\d+", defaults["GEO Score"]).group())
+        defaults["GEO Score"] = str(min(max(score, 1), 10))
+    except Exception:
+        defaults["GEO Score"] = "5"
+
+    return defaults
+
+
+def calculate_sov(response_text: str, client_name: str, competitors: list) -> dict:
     """
-    Calculates simple Share of Voice based on mentions.
+    Calculates Share of Voice as mention count (not just binary).
+    Returns dict of {name: mention_count}.
     """
-    mentions = {client_name: 0}
-    for comp in competitors:
-        mentions[comp] = 0
-        
     text_lower = response_text.lower()
-    
-    if client_name.lower() in text_lower:
-        mentions[client_name] = 1
-        
+    mentions = {}
+
+    def count_mentions(name: str) -> int:
+        if not name:
+            return 0
+        return len(re.findall(r'\b' + re.escape(name.lower()) + r'\b', text_lower))
+
+    mentions[client_name] = count_mentions(client_name)
     for comp in competitors:
-        if comp.lower() in text_lower:
-            mentions[comp] = 1
-            
+        mentions[comp] = count_mentions(comp)
+
     return mentions

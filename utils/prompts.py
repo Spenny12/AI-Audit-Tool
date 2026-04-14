@@ -8,7 +8,7 @@ BRANDED_CATEGORIES = {
         {"funnel": "Mid-Funnel", "audience": "General", "question": "What are the latest news or significant developments related to {client}?", "goal": "Tests for up-to-date information."},
         {"funnel": "Mid-Funnel", "audience": "General", "question": "How is {client} regulated, and what protections are in place for users in the {industry} sector?", "goal": "Granular, practical trust-building question."},
         {"funnel": "Mid-Funnel", "audience": "General", "question": "What is the fee or pricing structure of {client} for {service}, and what are the typical costs for a user?", "goal": "Core practical information."},
-        {"funnel": "Mid-Funnel", "audience": "General", "question": "How does the {client} service model work? Do users need to rely solely on a single point of contact for {service}, or are there other ways to manage their account?", "goal": "Core practical information."}
+        {"funnel": "Mid-Funnel", "audience": "General", "question": "How does the {client} service model work? Do users need to rely solely on a single point of contact for {service}, or are there other ways to manage their account?", "goal": "Core practical information."},
     ],
     "Market Comparisons": [
         {"funnel": "Lower Funnel", "audience": "Risk-Averse User", "question": "I am a risk-averse user. Is the guided model of {client} a safer choice for {service} than managing my own requirements on a platform like {competitors}? Why?", "goal": "Direct comparison on a key attribute (Safety/Reliability)."},
@@ -16,7 +16,7 @@ BRANDED_CATEGORIES = {
         {"funnel": "Lower Funnel", "audience": "Standard User", "question": "For a user managing multiple long-term goals in {industry}, would you recommend the integrated model of {client} or using a provider like {competitors}? What are the key differences?", "goal": "Competitive positioning for a standard persona."},
         {"funnel": "Lower Funnel", "audience": "Expert User", "question": "I am an experienced user who prefers a hands-on approach. Should I choose the guided model of {client} for {service} or a self-directed platform like {competitors}?", "goal": "Competitive positioning vs. a different investment philosophy (Guided vs. DIY)."},
         {"funnel": "Lower Funnel", "audience": "Convenience-Focused", "question": "If my main priority is an \"all-in-one\" service with a single point of contact for my {service} needs, which firm is a better fit: {client} or {competitors}?", "goal": "Competitive positioning for a specific service model (\"All-in-one\")."},
-        {"funnel": "Lower Funnel", "audience": "Stability-Focused", "question": "For achieving more predictable results through volatile conditions in {industry}, which approach is generally more stable: the active management of {client} or the passive approach of a provider like {competitors}?", "goal": "Competitive positioning on a core strategy (Active vs. Passive)."}
+        {"funnel": "Lower Funnel", "audience": "Stability-Focused", "question": "For achieving more predictable results through volatile conditions in {industry}, which approach is generally more stable: the active management of {client} or the passive approach of a provider like {competitors}?", "goal": "Competitive positioning on a core strategy (Active vs. Passive)."},
     ],
     "Customer Persona Highlights": [
         {"funnel": "Mid-Funnel", "audience": "High-Value Client", "question": "I am a high-value individual. What does {client} offer me in terms of bespoke advice, privacy, and exclusive {service} opportunities?", "goal": "Atomic prompt for the High-Net Worth persona."},
@@ -30,7 +30,7 @@ BRANDED_CATEGORIES = {
         {"funnel": "Mid-Funnel", "audience": "Standard Client", "question": "I am a standard user. Are the fees at {client} worth it for a profile like mine in {industry}?", "goal": "Atomic prompt for the Standard persona."},
         {"funnel": "Mid-Funnel", "audience": "Standard Client", "question": "What are the best {client} products for someone starting out in {industry}?", "goal": "Atomic question testing depth of knowledge for entry-level products."},
         {"funnel": "Mid-Funnel", "audience": "Standard Client", "question": "How does {client} help smaller users grow their {service} over time? Will I get the same attention as bigger clients?", "goal": "Atomic question testing knowledge of the client service model."},
-        {"funnel": "Mid-Funnel", "audience": "Standard Client", "question": "For a standard client at {client}, how can they ensure they receive personalized service that is truly tailored to their individual goals, rather than a generic strategy?", "goal": "Atomic question testing understanding of service personalization."}
+        {"funnel": "Mid-Funnel", "audience": "Standard Client", "question": "For a standard client at {client}, how can they ensure they receive personalized service that is truly tailored to their individual goals, rather than a generic strategy?", "goal": "Atomic question testing understanding of service personalization."},
     ],
     "Reputation Under Pressure": [
         {"funnel": "Reputation / All Stages", "audience": "General", "question": "What are the main disadvantages of working with {client} for {service}?", "goal": "Directly surfaces negative perceptions."},
@@ -39,8 +39,8 @@ BRANDED_CATEGORIES = {
         {"funnel": "Reputation / All Stages", "audience": "General", "question": "Is {client} often considered 'too expensive' or are its fees opaque? What do critics say about its {industry} fee structure?", "goal": "Addresses a common critical perception head-on."},
         {"funnel": "Reputation / All Stages", "audience": "General", "question": "What are the potential conflicts of interest or ethical concerns related to the {client} business model in {industry}?", "goal": "Tests for awareness of conflicts of interest."},
         {"funnel": "Reputation / All Stages", "audience": "General", "question": "Is it true that {client}'s options are limited to its own in-house {service}, potentially leading to mediocre outcomes and restricting user choice?", "goal": "Probes a common myth or misconception."},
-        {"funnel": "Reputation / All Stages", "audience": "General", "question": "I am an experienced user who enjoys a hands-on approach. Would I find the {client} model too restrictive and passive for {service}?", "goal": "Challenges a potential negative stereotype."}
-    ]
+        {"funnel": "Reputation / All Stages", "audience": "General", "question": "I am an experienced user who enjoys a hands-on approach. Would I find the {client} model too restrictive and passive for {service}?", "goal": "Challenges a potential negative stereotype."},
+    ],
 }
 
 # Generic industry questions that DO NOT mention the client name
@@ -52,10 +52,20 @@ UNBRANDED_CATEGORIES = {
         {"funnel": "Upper Funnel", "audience": "General", "question": "What are the best {industry} firms or providers for high-value individuals in {country}?", "goal": "Tests relevance within the 'High Value' vertical."},
         {"funnel": "Upper Funnel", "audience": "General", "question": "Which {industry} firms are known for their specialist expertise in ethical (ESG) or technology-focused areas?", "goal": "Tests relevance within the 'Specialist' vertical."},
         {"funnel": "Upper Funnel", "audience": "General", "question": "Which {industry} firms are best at creating a joint plan specifically for partners or families?", "goal": "Tests relevance within the 'Joint Needs' vertical."},
-        {"funnel": "Upper Funnel", "audience": "General", "question": "Which {industry} managers are considered specialists in structuring for regular, efficient outcomes?", "goal": "Tests relevance within the 'Outcome' vertical."}
-    ]
+        {"funnel": "Upper Funnel", "audience": "General", "question": "Which {industry} managers are considered specialists in structuring for regular, efficient outcomes?", "goal": "Tests relevance within the 'Outcome' vertical."},
+    ],
+    "Discovery & Intent": [
+        {"funnel": "Upper Funnel", "audience": "General", "question": "How do I choose the right {service} provider in {country}?", "goal": "Discovery intent — does brand appear naturally?"},
+        {"funnel": "Mid-Funnel", "audience": "General", "question": "What questions should I ask before choosing a {industry} firm?", "goal": "Consideration stage visibility."},
+        {"funnel": "Mid-Funnel", "audience": "General", "question": "What are the top {service} trends in {country} right now?", "goal": "Thought leadership visibility."},
+        {"funnel": "Lower Funnel", "audience": "General", "question": "Who are the top 5 {service} providers in {country} by reputation?", "goal": "Direct share-of-voice test without brand prompting."},
+    ],
 }
 
-def format_prompt(template, client, competitors, country="the UK", industry="financial services", service="investment"):
+
+def format_prompt(template: str, client: str, competitors: list, country: str = "the UK", industry: str = "financial services", service: str = "investment") -> str:
     comp_str = ", ".join(competitors) if competitors else "its competitors"
-    return template.format(client=client, competitors=comp_str, country=country, industry=industry, service=service)
+    try:
+        return template.format(client=client, competitors=comp_str, country=country, industry=industry, service=service)
+    except KeyError:
+        return template
