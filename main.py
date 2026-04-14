@@ -37,20 +37,42 @@ html, body, [class*="css"] {
 /* ── Hide default Streamlit chrome ────────── */
 #MainMenu, footer, header { visibility: hidden; }
 
-/* ── Page background ──────────────────────── */
+/* ── Page background & global text ───────── */
 .stApp {
-    background: #0f1117;
+    background: #111827;
+    color: #f1f5f9;
+}
+
+/* Ensure all plain text is readable */
+.stApp p, .stApp li, .stApp span, .stApp label,
+.stApp .stMarkdown, .stApp .stText {
     color: #e2e8f0;
+}
+
+/* Headings */
+.stApp h1, .stApp h2, .stApp h3, .stApp h4 {
+    color: #f8fafc;
+}
+
+/* Caption / helper text */
+.stApp .stCaption, .stApp small {
+    color: #94a3b8;
 }
 
 /* ── Sidebar ──────────────────────────────── */
 [data-testid="stSidebar"] {
-    background: #161b27;
-    border-right: 1px solid #1e2535;
+    background: #1a2133;
+    border-right: 1px solid #2d3748;
 }
-[data-testid="stSidebar"] .stMarkdown h2,
-[data-testid="stSidebar"] .stMarkdown h3 {
-    color: #94a3b8;
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] .stMarkdown {
+    color: #e2e8f0 !important;
+}
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: #94a3b8 !important;
     font-size: 0.7rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -59,8 +81,8 @@ html, body, [class*="css"] {
 
 /* ── Card ─────────────────────────────────── */
 .card {
-    background: #161b27;
-    border: 1px solid #1e2535;
+    background: #1a2133;
+    border: 1px solid #2d3748;
     border-radius: 12px;
     padding: 1.5rem;
     margin-bottom: 1rem;
@@ -68,19 +90,19 @@ html, body, [class*="css"] {
 
 /* ── Metric cards ─────────────────────────── */
 [data-testid="stMetric"] {
-    background: #1a2035;
-    border: 1px solid #1e2535;
+    background: #1e2a3e;
+    border: 1px solid #2d3748;
     border-radius: 10px;
     padding: 1rem 1.25rem;
 }
 [data-testid="stMetricValue"] {
     font-size: 1.6rem !important;
     font-weight: 700;
-    color: #e2e8f0;
+    color: #f1f5f9 !important;
 }
 [data-testid="stMetricLabel"] {
     font-size: 0.75rem !important;
-    color: #64748b;
+    color: #94a3b8 !important;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -94,16 +116,16 @@ html, body, [class*="css"] {
     font-weight: 600;
     letter-spacing: 0.03em;
 }
-.badge-positive  { background: #14532d; color: #86efac; }
-.badge-neutral   { background: #1e3a5f; color: #93c5fd; }
-.badge-negative  { background: #450a0a; color: #fca5a5; }
-.badge-low       { background: #14532d; color: #86efac; }
-.badge-medium    { background: #78350f; color: #fcd34d; }
-.badge-high      { background: #450a0a; color: #fca5a5; }
+.badge-positive  { background: #14532d; color: #bbf7d0; }
+.badge-neutral   { background: #1e3a5f; color: #bae6fd; }
+.badge-negative  { background: #450a0a; color: #fecaca; }
+.badge-low       { background: #14532d; color: #bbf7d0; }
+.badge-medium    { background: #78350f; color: #fde68a; }
+.badge-high      { background: #450a0a; color: #fecaca; }
 
-/* ── Tab styling ──────────────────────────── */
+/* ── Tab bar ──────────────────────────────── */
 .stTabs [data-baseweb="tab-list"] {
-    background: #161b27;
+    background: #1a2133;
     border-radius: 8px;
     padding: 4px;
     gap: 4px;
@@ -111,20 +133,25 @@ html, body, [class*="css"] {
 .stTabs [data-baseweb="tab"] {
     background: transparent;
     border-radius: 6px;
-    color: #64748b;
+    color: #94a3b8 !important;
     font-weight: 500;
-    font-size: 0.85rem;
+    font-size: 0.875rem;
     padding: 0.4rem 1rem;
 }
 .stTabs [aria-selected="true"] {
-    background: #1e2d4a !important;
-    color: #60a5fa !important;
+    background: #1e3a5f !important;
+    color: #93c5fd !important;
+}
+/* Tab panel background */
+.stTabs [data-baseweb="tab-panel"] {
+    background: transparent;
+    padding-top: 1rem;
 }
 
 /* ── Buttons ──────────────────────────────── */
 .stButton > button {
     background: linear-gradient(135deg, #1d4ed8, #2563eb);
-    color: white;
+    color: #ffffff !important;
     border: none;
     border-radius: 8px;
     font-weight: 600;
@@ -139,40 +166,124 @@ html, body, [class*="css"] {
     box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5);
 }
 
-/* ── Inputs ───────────────────────────────── */
+/* ── Inputs & textareas ───────────────────── */
 .stTextInput > div > div > input,
-.stTextArea > div > div > textarea,
+.stTextArea > div > div > textarea {
+    background: #1e2a3e !important;
+    border: 1px solid #2d3748 !important;
+    border-radius: 8px !important;
+    color: #f1f5f9 !important;
+    caret-color: #f1f5f9;
+}
+.stTextInput > div > div > input::placeholder,
+.stTextArea > div > div > textarea::placeholder {
+    color: #4b5563 !important;
+}
+
+/* Selectbox */
 .stSelectbox > div > div {
-    background: #1a2035 !important;
-    border: 1px solid #1e2535 !important;
+    background: #1e2a3e !important;
+    border: 1px solid #2d3748 !important;
+    border-radius: 8px !important;
+    color: #f1f5f9 !important;
+}
+/* Selectbox dropdown options */
+[data-baseweb="select"] * { color: #f1f5f9 !important; }
+[data-baseweb="menu"] {
+    background: #1e2a3e !important;
+    border: 1px solid #2d3748 !important;
+}
+[data-baseweb="option"]:hover {
+    background: #2d3f5a !important;
+}
+
+/* Input labels */
+.stTextInput label, .stTextArea label,
+.stSelectbox label, .stSlider label,
+.stCheckbox label, .stRadio label,
+.stMultiSelect label {
+    color: #cbd5e1 !important;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+/* Checkbox & radio text */
+.stCheckbox span, .stRadio span {
+    color: #e2e8f0 !important;
+}
+
+/* Multiselect tags */
+[data-baseweb="tag"] {
+    background: #1e3a5f !important;
+    color: #bae6fd !important;
+}
+
+/* Slider */
+[data-testid="stSlider"] .stSlider p {
+    color: #cbd5e1 !important;
+}
+
+/* ── Expanders ────────────────────────────── */
+/* Header (collapsed and expanded) */
+[data-testid="stExpander"] > details > summary,
+[data-testid="stExpander"] summary {
+    background: #1e2a3e !important;
+    border: 1px solid #2d3748 !important;
+    border-radius: 8px !important;
+    color: #e2e8f0 !important;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+}
+[data-testid="stExpander"] > details[open] > summary {
+    border-radius: 8px 8px 0 0 !important;
+    border-bottom-color: transparent !important;
+}
+/* Body */
+[data-testid="stExpander"] > details > div,
+[data-testid="stExpander"] .streamlit-expanderContent {
+    background: #1a2133 !important;
+    border: 1px solid #2d3748 !important;
+    border-top: none !important;
+    border-radius: 0 0 8px 8px !important;
+    color: #e2e8f0 !important;
+}
+/* All text inside expander body */
+[data-testid="stExpander"] details > div p,
+[data-testid="stExpander"] details > div span,
+[data-testid="stExpander"] details > div label,
+[data-testid="stExpander"] details > div .stMarkdown {
+    color: #e2e8f0 !important;
+}
+/* Arrow icon */
+[data-testid="stExpander"] summary svg {
+    fill: #94a3b8 !important;
+}
+
+/* ── Progress bar ─────────────────────────── */
+.stProgress > div > div > div { background: #2563eb !important; border-radius: 999px; }
+.stProgress > div > div       { background: #2d3748 !important; border-radius: 999px; }
+
+/* ── Alerts / status boxes ────────────────── */
+.stAlert > div {
+    background: #1e2a3e !important;
     border-radius: 8px !important;
     color: #e2e8f0 !important;
 }
 
-/* ── Expander ─────────────────────────────── */
-.streamlit-expanderHeader {
-    background: #1a2035 !important;
-    border: 1px solid #1e2535 !important;
+/* ── Status widget (st.status) ────────────── */
+[data-testid="stStatusWidget"],
+[data-testid="stStatusContainer"] {
+    background: #1e2a3e !important;
+    border: 1px solid #2d3748 !important;
+    color: #e2e8f0 !important;
     border-radius: 8px !important;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: #cbd5e1 !important;
 }
-.streamlit-expanderContent {
-    background: #161b27 !important;
-    border: 1px solid #1e2535 !important;
-    border-top: none !important;
-    border-radius: 0 0 8px 8px !important;
-}
-
-/* ── Progress bar ─────────────────────────── */
-.stProgress > div > div > div { background: #2563eb; border-radius: 999px; }
-.stProgress > div > div       { background: #1e2535; border-radius: 999px; }
 
 /* ── Header hero ──────────────────────────── */
 .hero {
-    background: linear-gradient(135deg, #0f1117 0%, #1a2035 100%);
-    border: 1px solid #1e2535;
+    background: linear-gradient(135deg, #111827 0%, #1e2a3e 100%);
+    border: 1px solid #2d3748;
     border-radius: 16px;
     padding: 2rem 2.5rem;
     margin-bottom: 1.5rem;
@@ -180,18 +291,18 @@ html, body, [class*="css"] {
 .hero h1 {
     font-size: 1.75rem;
     font-weight: 700;
-    color: #f1f5f9;
+    color: #f8fafc;
     margin: 0 0 0.25rem;
 }
 .hero p {
-    color: #64748b;
+    color: #94a3b8;
     font-size: 0.9rem;
     margin: 0;
 }
 .hero-badge {
     display: inline-block;
     background: #1e3a5f;
-    color: #60a5fa;
+    color: #7dd3fc;
     border-radius: 999px;
     font-size: 0.7rem;
     font-weight: 600;
@@ -202,11 +313,11 @@ html, body, [class*="css"] {
 }
 
 /* ── Divider ──────────────────────────────── */
-.divider { border: none; border-top: 1px solid #1e2535; margin: 1rem 0; }
+.divider { border: none; border-top: 1px solid #2d3748; margin: 1rem 0; }
 
 /* ── Score bar ────────────────────────────── */
 .score-bar-bg {
-    background: #1e2535;
+    background: #2d3748;
     border-radius: 999px;
     height: 6px;
     width: 100%;
@@ -219,21 +330,28 @@ html, body, [class*="css"] {
 
 /* ── Info box ─────────────────────────────── */
 .info-box {
-    background: #1e3a5f22;
-    border-left: 3px solid #2563eb;
+    background: #1e3a5f33;
+    border-left: 3px solid #3b82f6;
     border-radius: 0 8px 8px 0;
     padding: 0.75rem 1rem;
-    font-size: 0.83rem;
-    color: #93c5fd;
+    font-size: 0.85rem;
+    color: #bae6fd;
     margin: 0.5rem 0 1rem;
 }
 
 /* ── Download button ──────────────────────── */
 .stDownloadButton > button {
-    background: #1a2035 !important;
-    border: 1px solid #2563eb !important;
-    color: #60a5fa !important;
+    background: #1e2a3e !important;
+    border: 1px solid #3b82f6 !important;
+    color: #93c5fd !important;
     font-weight: 500;
+}
+
+/* ── Dataframe ────────────────────────────── */
+[data-testid="stDataFrame"] {
+    background: #1a2133;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
 }
 </style>
 """, unsafe_allow_html=True)
