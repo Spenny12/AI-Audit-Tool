@@ -23,8 +23,7 @@ from utils.recommendations import generate_recommendation, should_flag_for_recom
 # Page config
 # ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="AI Visibility Audit Suite",
-    page_icon="🔍",
+    page_title="AI Visibility Audit",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -652,7 +651,7 @@ with st.sidebar:
     st.markdown("## ⚙ Global Settings")
 
     # ── Feature 1: Profiles ───────────────────
-    with st.expander("👤 Client Profiles", expanded=False):
+    with st.expander("Client Profiles", expanded=False):
         profiles = list_profiles()
         if profiles:
             load_name = st.selectbox("Load profile", ["— select —"] + profiles, key="load_profile_sel")
@@ -675,14 +674,14 @@ with st.sidebar:
             st.caption("No saved profiles yet.")
 
         save_name = st.text_input("Save current setup as…", placeholder="Client name", key="save_profile_name")
-        if st.button("💾 Save Profile", use_container_width=True, key="save_profile_btn"):
+        if st.button("Save Profile", use_container_width=True, key="save_profile_btn"):
             if save_name:
                 st.session_state["_pending_save"] = save_name
             else:
                 st.warning("Enter a name first.")
 
     # ── API Keys ──────────────────────────────
-    with st.expander("🔑 API Keys", expanded=True):
+    with st.expander("API Keys", expanded=True):
         openai_key = st.text_input("OpenAI API Key", type="password", key="oai_key",
             help="Required for OpenAI models. Never stored.")
         openai_model = st.selectbox("OpenAI Model", OPENAI_MODELS, index=0, key="oai_model")
@@ -696,7 +695,7 @@ with st.sidebar:
             help="Required for Perplexity Sonar models. Uses live web search — great for citation tracking.")
         perplexity_model = st.selectbox("Perplexity Model", PERPLEXITY_MODELS, index=0, key="pplx_model")
 
-    with st.expander("🌍 Region & Context", expanded=True):
+    with st.expander("Region & Context", expanded=True):
         country = st.selectbox(
             "Target Country/Region",
             ["United Kingdom", "United States", "Canada", "Australia", "Germany", "France", "Ireland", "Other"],
@@ -733,7 +732,7 @@ with st.sidebar:
         )
 
     st.markdown("---")
-    st.caption("AI Visibility Audit Suite v2.1")
+    st.caption("AI Visibility Audit v2.1")
 
 
 # ─────────────────────────────────────────────
@@ -763,7 +762,7 @@ def first_provider_for_recs(industry_val, country_val):
 st.markdown("""
 <div class="hero">
     <div class="hero-badge">GEO Audit Tool</div>
-    <h1>AI Visibility &amp; Discovery Audit Suite</h1>
+    <h1>AI Visibility &amp; Discovery Audit</h1>
     <p>Measure how AI models perceive, rank, and recommend your brand — and where competitors have the edge.</p>
 </div>
 """, unsafe_allow_html=True)
