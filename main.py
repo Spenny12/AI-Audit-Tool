@@ -712,11 +712,11 @@ with st.sidebar:
             help="Faster but skips Sentiment/GEO/Hallucination scoring.")
 
     # ── Feature 2: Cache stats + clear ────────
-    with st.expander("💾 Cache", expanded=False):
+    with st.expander("Cache", expanded=False):
         stats = cache_stats()
         st.metric("Cached entries", stats["entries"])
         st.metric("Cache size", f"{stats['size_kb']} KB")
-        if st.button("🗑 Clear Cache", use_container_width=True, key="clear_cache_btn"):
+        if st.button("Clear Cache", use_container_width=True, key="clear_cache_btn"):
             n = clear_cache()
             st.success(f"Cleared {n} cached entries.")
 
